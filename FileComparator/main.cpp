@@ -1,8 +1,11 @@
 #include "filecomparator.h"
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -43,18 +46,82 @@ struct RestoreCout
     }
 } restoreCout;
 
-void show(const std::string &title, FileComparator &cmp)
+void print(const std::string &text)
 {
-    std::cout << title << std::endl;
-    std::cout << "    файли: " << (cmp.GetName1().empty() ? "-" : cmp.GetName1()) << " ("
-              << cmp.GetLength1() << " байт), " << (cmp.GetName2().empty() ? "-" : cmp.GetName2())
-              << " (" << cmp.GetLength2() << " байт)" << std::endl;
-    if (!cmp.IsOpen()) {
-        std::cout << "    файли не відкрито, порівняння неможливе" << std::endl;
-        return;
+    std::cout << text << std::endl;
+}
+
+void title(const std::string &text)
+{
+    const int width = 78;
+    int left = (width - 2 - static_cast<int>(text.size())) / 2;
+    int right = width - 2 - static_cast<int>(text.size()) - left;
+    print(std::string(width, '-'));
+    print("|" + std::string(left, ' ') + text + std::string(right, ' ') + "|");
+    print(std::string(width, '-'));
+}
+
+void section(const std::string &text)
+{
+    print("");
+    print("[ " + text + " ]");
+}
+
+void blockBegin(const std::string &name)
+{
+    const int width = 40;
+    int left = (width - 2 - static_cast<int>(name.size())) / 2;
+    int right = width - 2 - static_cast<int>(name.size()) - left;
+    print(std::string(left, '-') + " " + name + " " + std::string(right, '-'));
+}
+
+void blockEnd()
+{
+    print(std::string(40, '-'));
+}
+
+void field(const std::string &name, const std::string &value)
+{
+    std::ostringstream s;
+    s << std::left << std::setw(14) << name << ": " << value;
+    print(s.str());
+}
+
+std::string line(const std::vector<int> &widths)
+{
+    std::string s;
+    for (int w : widths)
+        s += "+" + std::string(w + 2, '-');
+    return s + "+";
+}
+
+std::string row(const std::vector<std::string> &cells, const std::vector<int> &widths)
+{
+    std::ostringstream s;
+    for (size_t i = 0; i < cells.size(); i++)
+        s << "| " << std::left << std::setw(widths[i]) << cells[i] << " ";
+    s << "|";
+    return s.str();
+}
+
+std::string num(double value, int digits = 2)
+{
+    std::ostringstream s;
+    s << std::fixed << std::setprecision(digits) << value;
+    return s.str();
+}
+
+void showObject(const std::string &name, FileComparator &cmp)
+{
+    blockBegin(name);
+    field("File 1", cmp.GetName1().empty() ? "-" : cmp.GetName1() + " (" + std::to_string(cmp.GetLength1()) + " bytes)");
+    field("File 2", cmp.GetName2().empty() ? "-" : cmp.GetName2() + " (" + std::to_string(cmp.GetLength2()) + " bytes)");
+    field("Opened", cmp.IsOpen() ? "YES" : "NO");
+    if (cmp.IsOpen()) {
+        field("Compare len", std::to_string(cmp.GetCompareLength()) + " bytes");
+        field("Differences", std::to_string(cmp.CountDifferences()));
     }
-    std::cout << "    довжина порівняння: " << cmp.GetCompareLength() << " байт" << std::endl;
-    std::cout << "    кількість різних байтів: " << cmp.CountDifferences() << std::endl;
+    blockEnd();
 }
 
 int main()
@@ -65,7 +132,7 @@ int main()
 
     std::ifstream fin("input.txt");
     if (!fin) {
-        std::cout << "Не вдалося відкрити input.txt" << std::endl;
+        print("ERROR: cannot open input.txt");
         return 1;
     }
 
@@ -73,32 +140,33 @@ int main()
     long length;
     fin >> first >> second >> length >> resultName;
 
-    std::cout << "1) Конструктор за замовчуванням:" << std::endl;
+    title("FILE COMPARATOR (VARIANT 10)");
+
+    section("1. DEFAULT CONSTRUCTOR: FileComparator empty;");
     FileComparator empty;
-    show("Об'єкт empty:", empty);
+    showObject("empty", empty);
 
-    std::cout << std::endl << "2) Конструктор з двома аргументами:" << std::endl;
+    section("2. TWO ARGS: FileComparator full(\"" + first + "\", \"" + second + "\");");
     FileComparator full(first, second);
-    show("Об'єкт full (порівняння по всій довжині):", full);
-
+    showObject("full", full);
     long saved = full.SaveDifferences(resultName);
-    std::cout << "    позиції різних байтів записано у " << resultName
-              << " (" << saved << " шт.)" << std::endl;
+    print(">> Positions saved to " + resultName + ": " + std::to_string(saved));
 
-    std::cout << std::endl << "3) Конструктор з трьома аргументами (довжина " << length << "):" << std::endl;
+    section("3. THREE ARGS: FileComparator part(..., " + std::to_string(length) + ");");
     FileComparator part(first, second, length);
-    show("Об'єкт part:", part);
+    showObject("part", part);
 
-    std::cout << std::endl << "4) Конструктор копіювання (копія part):" << std::endl;
+    section("4. COPY CONSTRUCTOR: FileComparator copy(part);");
     FileComparator copy(part);
-    show("Об'єкт copy:", copy);
+    showObject("copy", copy);
 
-    std::cout << std::endl << "Вміст файлу " << resultName << ":" << std::endl;
+    section("CONTENT OF " + resultName);
     std::ifstream result(resultName);
-    std::string line, all;
-    while (std::getline(result, line)) all += line + " ";
-    std::cout << "    " << all << std::endl;
+    std::string text, all;
+    while (std::getline(result, text))
+        all += text + " ";
+    print(all);
 
-    std::cout << std::endl << "Кінець main - далі викликаються деструктори:" << std::endl;
+    section("END OF main - DESTRUCTORS");
     return 0;
 }

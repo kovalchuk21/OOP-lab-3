@@ -7,7 +7,7 @@
 FileComparator::FileComparator()
     : length1(0), length2(0), compareLength(0), file1(nullptr), file2(nullptr)
 {
-    std::cout << "    [конструктор за замовчуванням]" << std::endl;
+    std::cout << "    [default constructor]" << std::endl;
 }
 
 FileComparator::FileComparator(const std::string &firstName, const std::string &secondName)
@@ -15,7 +15,7 @@ FileComparator::FileComparator(const std::string &firstName, const std::string &
       file1(nullptr), file2(nullptr)
 {
     OpenFiles();
-    std::cout << "    [конструктор з двома аргументами]" << std::endl;
+    std::cout << "    [constructor with 2 args]" << std::endl;
 }
 
 FileComparator::FileComparator(const std::string &firstName, const std::string &secondName, long length)
@@ -23,7 +23,7 @@ FileComparator::FileComparator(const std::string &firstName, const std::string &
       file1(nullptr), file2(nullptr)
 {
     OpenFiles();
-    std::cout << "    [конструктор з трьома аргументами]" << std::endl;
+    std::cout << "    [constructor with 3 args]" << std::endl;
 }
 
 FileComparator::FileComparator(const FileComparator &other)
@@ -31,14 +31,14 @@ FileComparator::FileComparator(const FileComparator &other)
       compareLength(other.compareLength), file1(nullptr), file2(nullptr)
 {
     OpenFiles();
-    std::cout << "    [конструктор копіювання]" << std::endl;
+    std::cout << "    [copy constructor]" << std::endl;
 }
 
 FileComparator::~FileComparator()
 {
     CloseFiles();
-    std::cout << "    [деструктор: файли " << (name1.empty() ? "-" : name1) << ", "
-              << (name2.empty() ? "-" : name2) << " закрито]" << std::endl;
+    std::cout << "    [destructor: files " << (name1.empty() ? "-" : name1) << ", "
+              << (name2.empty() ? "-" : name2) << " closed]" << std::endl;
 }
 
 void FileComparator::OpenFiles()

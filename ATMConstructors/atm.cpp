@@ -8,7 +8,7 @@ const std::string ATM::ADMIN_PASSWORD = "1234";
 ATM::ATM()
 {
     Reset();
-    std::cout << "    [конструктор за замовчуванням]" << std::endl;
+    std::cout << "    [default constructor]" << std::endl;
 }
 
 ATM::ATM(int startMoney, double startTape)
@@ -18,7 +18,7 @@ ATM::ATM(int startMoney, double startTape)
     SetMoney(startMoney);
     SetTapeLength(startTape);
     level = UserLevel::Guest;
-    std::cout << "    [конструктор ініціалізації]" << std::endl;
+    std::cout << "    [init constructor]" << std::endl;
 }
 
 ATM::ATM(const ATM &other)
@@ -28,12 +28,12 @@ ATM::ATM(const ATM &other)
     , noTape(other.noTape)
     , level(UserLevel::Guest)
 {
-    std::cout << "    [конструктор копіювання]" << std::endl;
+    std::cout << "    [copy constructor]" << std::endl;
 }
 
 ATM::~ATM()
 {
-    std::cout << "    [деструктор банкомата]" << std::endl;
+    std::cout << "    [ATM destructor]" << std::endl;
 }
 
 void ATM::Reset()
@@ -112,13 +112,13 @@ void ATM::UpdateState()
 std::string ATM::GetStateName() const
 {
     switch (state) {
-    case AtmState::Working: return "працює";
-    case AtmState::NotWorking: return "не працює";
-    default: return "помилка";
+    case AtmState::Working: return "WORKING";
+    case AtmState::NotWorking: return "NOT WORKING";
+    default: return "ERROR";
     }
 }
 
 std::string ATM::GetLevelName() const
 {
-    return level == UserLevel::Admin ? "адміністратор" : "гість";
+    return level == UserLevel::Admin ? "ADMIN" : "GUEST";
 }
