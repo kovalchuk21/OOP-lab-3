@@ -34,7 +34,7 @@ int main()
     long length;
     fin >> first >> second >> length >> resultName;
 
-    PrintBox("<------- FILE COMPARATOR (VARIANT 10) ------->");
+    PrintBox("<------- FILE COMPARATOR ------->");
 
     PrintBox("Testing default constructor");
     FileComparator empty;
