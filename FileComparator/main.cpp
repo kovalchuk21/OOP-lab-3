@@ -1,127 +1,20 @@
 #include "filecomparator.h"
-
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <vector>
+#include "ui.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-class TeeBuf : public std::streambuf
+void ShowComparator(const std::string &name, FileComparator &cmp)
 {
-public:
-    TeeBuf(std::streambuf *first, std::streambuf *second) : a(first), b(second) {}
-
-protected:
-    int overflow(int c) override
-    {
-        if (c == EOF) return 0;
-        if (a->sputc(c) == EOF || b->sputc(c) == EOF) return EOF;
-        return c;
+    if (!cmp.IsOpen()) {
+        PrintTable({"Object", "File 1", "File 2", "Opened"}, {{name, "-", "-", "NO"}});
+        return;
     }
-    int sync() override
-    {
-        return (a->pubsync() == 0 && b->pubsync() == 0) ? 0 : -1;
-    }
-
-private:
-    std::streambuf *a;
-    std::streambuf *b;
-};
-
-std::ofstream fout("output.txt");
-TeeBuf tee(std::cout.rdbuf(), fout.rdbuf());
-std::streambuf *consoleBuf = std::cout.rdbuf(&tee);
-
-struct RestoreCout
-{
-    ~RestoreCout()
-    {
-        std::cout.flush();
-        std::cout.rdbuf(consoleBuf);
-    }
-} restoreCout;
-
-void print(const std::string &text)
-{
-    std::cout << text << std::endl;
-}
-
-void title(const std::string &text)
-{
-    const int width = 78;
-    int left = (width - 2 - static_cast<int>(text.size())) / 2;
-    int right = width - 2 - static_cast<int>(text.size()) - left;
-    print(std::string(width, '-'));
-    print("|" + std::string(left, ' ') + text + std::string(right, ' ') + "|");
-    print(std::string(width, '-'));
-}
-
-void section(const std::string &text)
-{
-    print("");
-    print("[ " + text + " ]");
-}
-
-void blockBegin(const std::string &name)
-{
-    const int width = 40;
-    int left = (width - 2 - static_cast<int>(name.size())) / 2;
-    int right = width - 2 - static_cast<int>(name.size()) - left;
-    print(std::string(left, '-') + " " + name + " " + std::string(right, '-'));
-}
-
-void blockEnd()
-{
-    print(std::string(40, '-'));
-}
-
-void field(const std::string &name, const std::string &value)
-{
-    std::ostringstream s;
-    s << std::left << std::setw(14) << name << ": " << value;
-    print(s.str());
-}
-
-std::string line(const std::vector<int> &widths)
-{
-    std::string s;
-    for (int w : widths)
-        s += "+" + std::string(w + 2, '-');
-    return s + "+";
-}
-
-std::string row(const std::vector<std::string> &cells, const std::vector<int> &widths)
-{
-    std::ostringstream s;
-    for (size_t i = 0; i < cells.size(); i++)
-        s << "| " << std::left << std::setw(widths[i]) << cells[i] << " ";
-    s << "|";
-    return s.str();
-}
-
-std::string num(double value, int digits = 2)
-{
-    std::ostringstream s;
-    s << std::fixed << std::setprecision(digits) << value;
-    return s.str();
-}
-
-void showObject(const std::string &name, FileComparator &cmp)
-{
-    blockBegin(name);
-    field("File 1", cmp.GetName1().empty() ? "-" : cmp.GetName1() + " (" + std::to_string(cmp.GetLength1()) + " bytes)");
-    field("File 2", cmp.GetName2().empty() ? "-" : cmp.GetName2() + " (" + std::to_string(cmp.GetLength2()) + " bytes)");
-    field("Opened", cmp.IsOpen() ? "YES" : "NO");
-    if (cmp.IsOpen()) {
-        field("Compare len", std::to_string(cmp.GetCompareLength()) + " bytes");
-        field("Differences", std::to_string(cmp.CountDifferences()));
-    }
-    blockEnd();
+    PrintTable({"Object", "File 1", "File 2", "Opened", "Compare len", "Differences"},
+               {{name, cmp.GetName1() + " (" + std::to_string(cmp.GetLength1()) + " B)",
+                 cmp.GetName2() + " (" + std::to_string(cmp.GetLength2()) + " B)", "YES",
+                 std::to_string(cmp.GetCompareLength()) + " B", std::to_string(cmp.CountDifferences())}});
 }
 
 int main()
@@ -129,10 +22,11 @@ int main()
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
 #endif
+    SaveOutputTo("output.txt");
 
     std::ifstream fin("input.txt");
     if (!fin) {
-        print("ERROR: cannot open input.txt");
+        Warn("Cannot open input.txt");
         return 1;
     }
 
@@ -140,33 +34,33 @@ int main()
     long length;
     fin >> first >> second >> length >> resultName;
 
-    title("FILE COMPARATOR (VARIANT 10)");
+    PrintBox("<------- FILE COMPARATOR (VARIANT 10) ------->");
 
-    section("1. DEFAULT CONSTRUCTOR: FileComparator empty;");
+    PrintBox("Testing default constructor");
     FileComparator empty;
-    showObject("empty", empty);
+    ShowComparator("empty", empty);
 
-    section("2. TWO ARGS: FileComparator full(\"" + first + "\", \"" + second + "\");");
+    PrintBox("Testing constructor with 2 arguments (whole files)");
     FileComparator full(first, second);
-    showObject("full", full);
+    ShowComparator("full", full);
     long saved = full.SaveDifferences(resultName);
-    print(">> Positions saved to " + resultName + ": " + std::to_string(saved));
+    Done("Positions of different bytes saved to " + resultName + ": " + std::to_string(saved));
 
-    section("3. THREE ARGS: FileComparator part(..., " + std::to_string(length) + ");");
+    PrintBox("Testing constructor with 3 arguments (first " + std::to_string(length) + " bytes)");
     FileComparator part(first, second, length);
-    showObject("part", part);
+    ShowComparator("part", part);
 
-    section("4. COPY CONSTRUCTOR: FileComparator copy(part);");
+    PrintBox("Testing copy constructor: FileComparator copy(part)");
     FileComparator copy(part);
-    showObject("copy", copy);
+    ShowComparator("copy", copy);
 
-    section("CONTENT OF " + resultName);
+    PrintBox("Checking what is in " + resultName);
     std::ifstream result(resultName);
     std::string text, all;
     while (std::getline(result, text))
         all += text + " ";
-    print(all);
+    std::cout << "positions = " << all << "\n";
 
-    section("END OF main - DESTRUCTORS");
+    PrintBox("End of main: destructors are called");
     return 0;
 }
